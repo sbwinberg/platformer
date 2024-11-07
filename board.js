@@ -6,7 +6,6 @@ let platforms;
 function startGame(){
     board.start();
     player = new Player(30, 30, 0, 0);
-    platforms = new Player(100, 15, 100, 200);
 }
 
 
@@ -21,6 +20,7 @@ const board = {
         this.context = this.canvas.getContext('2d');
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
         this.interval = setInterval(updateBoard, 20);
+
         window.addEventListener('keydown', (e) => {
             board.keys = board.keys || [];
             board.keys[e.key] = true;
@@ -51,24 +51,40 @@ function updateBoard(){
 
 
 // Player functions
-function Player(width, height, x, y) {
-    this.width = width;
-    this.height = height;
-    this.speedX = 0;
-    this.speedY = 0;
-    this.x = x;
-    this.y = y;
-    this.bottom = board.canvas.height - this.height
-    this.gravity = 1;
-    this.gravitySpeed = 0;
-    this.update = function() {
+class Player {
+    constructor(){
+        this.width = width;
+        this.height = height;
+        this.speed = 5;
+        this.weight = 5;
+        this.x_acceleration = 0;
+        this.y_acceleration = 0;
+        this.x = x;
+        this.y = y;
+        this.bottom = board.canvas.height - this.height
+        this.gravity = 1;
+        this.gravitySpeed = 0;
+    }
+    isFalling(){
+        return this.y_acceleration > 0;
+    }
+
+    isOnPlatform(platform){
+        return platform.y <= this.y &&
+            this.y <= platform.y + board.canvas.height
+    }
+
+    update = function() {
         let ctx = board.context;
         ctx.fillStyle = 'red';
         ctx.fillRect(this.x, this.y, this.width, this.height)
     }
-    this.newPos = function() {
+    newPos() {
+        if(this.crashWith(platforms)){
+            stopMoveY();
+        }
         // Gravity kicks in when player is in the air
-        if(this.y < this.bottom || this.crashWith(platforms)){
+        if(this.y < this.bottom || !this.crashWith(platforms)){
             this.gravitySpeed += this.gravity
         }
         // When player crosses the left or right borders of the playing area the player resets to the opposite end of the screen
@@ -82,17 +98,14 @@ function Player(width, height, x, y) {
         this.y += this.speedY + this.gravitySpeed;
         this.hitBottomOrObject();
     }
-    this.hitBottomOrObject = function(){
+
+    hitBottomOrObject(){
         if(this.y > this.bottom){
             this.y = this.bottom;
         }
-        if(this.crashWith(platforms)){
-            console.log('här hamnade vi ändå')
-            this.y = platforms.y;
-        }
     }
 
-    this.crashWith = function(object){
+    crashWith(object){
         let collision = false;
         let playerLeft = this.x;
         let playerRight = this.x + this.width
@@ -121,6 +134,8 @@ function stopMoveX() {
 }
 function stopMoveY() {
     player.speedX = 0
+    player.gravity = 0;
+    player.gravitySpeed = 0;
 }
 function jump(){
     if(player.y === board.canvas.height - player.width){
